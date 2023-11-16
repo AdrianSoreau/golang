@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"os"
+	"sync"
 )
 
 type Entry struct {
@@ -11,11 +12,91 @@ type Entry struct {
 }
 
 type Dictionary struct {
-	filePath string
+	filePath     string
+	addChan      chan addRequest
+	removeChan   chan string
+	wg           sync.WaitGroup
+}
+
+type addRequest struct {
+	word       string
+	definition string
+	result     chan error
 }
 
 func New(filePath string) *Dictionary {
-	return &Dictionary{filePath: filePath}
+	d := &Dictionary{
+		filePath:   filePath,
+		addChan:    make(chan addRequest),
+		removeChan: make(chan string),
+	}
+
+	go d.processRequests()
+
+	return d
+}
+
+func (d *Dictionary) processRequests() {
+	entries, err := d.load()
+	if err != nil {
+	}
+
+	for {
+		select {
+		case addReq := <-d.addChan:
+			if _, exists := entries[addReq.word]; exists {
+				addReq.result <- errors.New("word already exists")
+			} else {
+				entries[addReq.word] = Entry{Definition: addReq.definition}
+				addReq.result <- d.save(entries)
+			}
+
+		case word := <-d.removeChan:
+			if _, exists := entries[word]; !exists {
+			} else {
+				delete(entries, word)
+				d.save(entries)
+			}
+		}
+	}
+}
+
+func (d *Dictionary) Add(word, definition string) error {
+	resultChan := make(chan error)
+	d.addChan <- addRequest{word, definition, resultChan}
+	return <-resultChan
+}
+
+func (d *Dictionary) Remove(word string) error {
+	d.removeChan <- word
+	return nil
+}
+
+func (d *Dictionary) Get(word string) (Entry, error) {
+	entries, err := d.load()
+	if err != nil {
+		return Entry{}, err
+	}
+
+	entry, exists := entries[word]
+	if !exists {
+		return Entry{}, errors.New("word does not exist")
+	}
+
+	return entry, nil
+}
+
+func (d *Dictionary) List() ([]string, error) {
+	entries, err := d.load()
+	if err != nil {
+		return nil, err
+	}
+
+	var words []string
+	for word := range entries {
+		words = append(words, word)
+	}
+	return words, nil
 }
 
 func (d *Dictionary) load() (map[string]Entry, error) {
@@ -44,59 +125,4 @@ func (d *Dictionary) save(entries map[string]Entry) error {
 	defer file.Close()
 
 	return json.NewEncoder(file).Encode(entries)
-}
-
-func (d *Dictionary) Add(word, definition string) error {
-	entries, err := d.load()
-	if err != nil {
-		return err
-	}
-
-	if _, exists := entries[word]; exists {
-		return errors.New("word already exists")
-	}
-
-	entries[word] = Entry{Definition: definition}
-	return d.save(entries)
-}
-
-func (d *Dictionary) Get(word string) (Entry, error) {
-	entries, err := d.load()
-	if err != nil {
-		return Entry{}, err
-	}
-
-	entry, exists := entries[word]
-	if !exists {
-		return Entry{}, errors.New("word does not exist")
-	}
-
-	return entry, nil
-}
-
-func (d *Dictionary) Remove(word string) error {
-	entries, err := d.load()
-	if err != nil {
-		return err
-	}
-
-	if _, exists := entries[word]; !exists {
-		return errors.New("word does not exist")
-	}
-
-	delete(entries, word)
-	return d.save(entries)
-}
-
-func (d *Dictionary) List() ([]string, error) {
-	entries, err := d.load()
-	if err != nil {
-		return nil, err
-	}
-
-	var words []string
-	for word := range entries {
-		words = append(words, word)
-	}
-	return words, nil
 }

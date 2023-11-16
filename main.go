@@ -19,11 +19,11 @@ func main() {
 
 		switch action {
 		case "add":
-			actionAdd(d, reader)
+			actionAddConcurrent(d, reader)
 		case "define":
-			actionDefine(d, reader)
+			actionDefineConcurrent(d, reader)
 		case "remove":
-			actionRemove(d, reader)
+			actionRemoveConcurrent(d, reader)
 		case "list":
 			actionList(d)
 		case "exit":
@@ -35,7 +35,7 @@ func main() {
 	}
 }
 
-func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
+func actionAddConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
 	fmt.Print("Enter word: ")
 	word, _ := reader.ReadString('\n')
 	word = strings.TrimSpace(word)
@@ -44,38 +44,44 @@ func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
 	definition, _ := reader.ReadString('\n')
 	definition = strings.TrimSpace(definition)
 
-	err := d.Add(word, definition)
-	if err != nil {
-		fmt.Println("Failed to add word:", err)
-	} else {
-		fmt.Println("Word added.")
-	}
+	go func() {
+		err := d.Add(word, definition)
+		if err != nil {
+			fmt.Println("Failed to add word:", err)
+		} else {
+			fmt.Println("Word added.")
+		}
+	}()
 }
 
-func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
+func actionDefineConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
 	fmt.Print("Enter word: ")
 	word, _ := reader.ReadString('\n')
 	word = strings.TrimSpace(word)
 
-	entry, err := d.Get(word)
-	if err != nil {
-		fmt.Println("Failed to find word:", err)
-	} else {
-		fmt.Println("Definition:", entry)
-	}
+	go func() {
+		entry, err := d.Get(word)
+		if err != nil {
+			fmt.Println("Failed to find word:", err)
+		} else {
+			fmt.Println("Definition:", entry)
+		}
+	}()
 }
 
-func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
+func actionRemoveConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
 	fmt.Print("Enter word to remove: ")
 	word, _ := reader.ReadString('\n')
 	word = strings.TrimSpace(word)
 
-	err := d.Remove(word)
-	if err != nil {
-		fmt.Println("Failed to remove word:", err)
-	} else {
-		fmt.Println("Word removed.")
-	}
+	go func() {
+		err := d.Remove(word)
+		if err != nil {
+			fmt.Println("Failed to remove word:", err)
+		} else {
+			fmt.Println("Word removed.")
+		}
+	}()
 }
 
 func actionList(d *dictionary.Dictionary) {
