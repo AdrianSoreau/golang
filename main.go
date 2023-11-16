@@ -1,27 +1,37 @@
 package main
 
 import (
-	"bufio"
-
-	"dictionary/dictionary"
+	"fmt"
+	"sort"
+	"estiam-main/dictionary"
 )
 
 func main() {
-	// bufio.NewReader(os.Stdin)
-}
+	d := dictionary.New()
 
-func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
+	d.Add("Gopher", "A person who uses the Go programming language.")
+	d.Add("Variable", "A data storage element in programming.")
+	d.Add("Function", "A block of code that performs a specific task.")
 
-}
+	word := "Gopher"
+	entry, err := d.Get(word)
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Printf("Definition of '%s': %s\n", word, entry)
+	}
 
-func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
+	err = d.Remove("Variable")
+	if err != nil {
+		fmt.Println(err)
+	} else {
+		fmt.Println("Word 'Variable' removed.")
+	}
 
-}
-
-func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
-
-}
-
-func actionList(d *dictionary.Dictionary) {
-
+	words, entries := d.List()
+	sort.Strings(words)
+	fmt.Println("\nList of words and their definitions:")
+	for _, w := range words {
+		fmt.Printf("%s : %s\n", w, entries[w])
+	}
 }
