@@ -1,37 +1,96 @@
 package main
 
 import (
+	"bufio"
 	"fmt"
-	"sort"
+	"os"
+	"strings"
 	"estiam-main/dictionary"
 )
 
 func main() {
-	d := dictionary.New()
+	reader := bufio.NewReader(os.Stdin)
+	d := dictionary.New("dictionary.json")
 
-	d.Add("Gopher", "A person who uses the Go programming language.")
-	d.Add("Variable", "A data storage element in programming.")
-	d.Add("Function", "A block of code that performs a specific task.")
+	for {
+		fmt.Println("\nChoose an action [add, define, remove, list, exit]:")
+		action, _ := reader.ReadString('\n')
+		action = strings.TrimSpace(action)
 
-	word := "Gopher"
+		switch action {
+		case "add":
+			actionAdd(d, reader)
+		case "define":
+			actionDefine(d, reader)
+		case "remove":
+			actionRemove(d, reader)
+		case "list":
+			actionList(d)
+		case "exit":
+			fmt.Println("Exiting...")
+			return
+		default:
+			fmt.Println("Action not recognized.")
+		}
+	}
+}
+
+func actionAdd(d *dictionary.Dictionary, reader *bufio.Reader) {
+	fmt.Print("Enter word: ")
+	word, _ := reader.ReadString('\n')
+	word = strings.TrimSpace(word)
+
+	fmt.Print("Enter definition: ")
+	definition, _ := reader.ReadString('\n')
+	definition = strings.TrimSpace(definition)
+
+	err := d.Add(word, definition)
+	if err != nil {
+		fmt.Println("Failed to add word:", err)
+	} else {
+		fmt.Println("Word added.")
+	}
+}
+
+func actionDefine(d *dictionary.Dictionary, reader *bufio.Reader) {
+	fmt.Print("Enter word: ")
+	word, _ := reader.ReadString('\n')
+	word = strings.TrimSpace(word)
+
 	entry, err := d.Get(word)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Failed to find word:", err)
 	} else {
-		fmt.Printf("Definition of '%s': %s\n", word, entry)
+		fmt.Println("Definition:", entry)
 	}
+}
 
-	err = d.Remove("Variable")
+func actionRemove(d *dictionary.Dictionary, reader *bufio.Reader) {
+	fmt.Print("Enter word to remove: ")
+	word, _ := reader.ReadString('\n')
+	word = strings.TrimSpace(word)
+
+	err := d.Remove(word)
 	if err != nil {
-		fmt.Println(err)
+		fmt.Println("Failed to remove word:", err)
 	} else {
-		fmt.Println("Word 'Variable' removed.")
+		fmt.Println("Word removed.")
+	}
+}
+
+func actionList(d *dictionary.Dictionary) {
+	words, err := d.List()
+	if err != nil {
+		fmt.Println("Error listing words:", err)
+		return
 	}
 
-	words, entries := d.List()
-	sort.Strings(words)
-	fmt.Println("\nList of words and their definitions:")
-	for _, w := range words {
-		fmt.Printf("%s : %s\n", w, entries[w])
+	for _, word := range words {
+		entry, err := d.Get(word)
+		if err != nil {
+			fmt.Println("Error getting definition for word:", word, "Error:", err)
+			continue
+		}
+		fmt.Println(word, ":", entry)
 	}
 }
