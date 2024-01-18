@@ -1,2 +1,8 @@
 2024/01/18 10:33:27 POST /word 52.569µs
 2024/01/18 10:33:36 DELETE /word/example 3.858µs
+2024/01/18 10:37:55 GET /word/exemple 65.592µs
+2024/01/18 10:38:06 GET /word/exemple 62.05µs
+2024/01/18 10:40:20 GET /word/exemple 71.416µs
+2024/01/18 10:40:22 GET /word/exemple 79.494µs
+2024/01/18 10:41:29 GET /word/exemple 64.884µs
+2024/01/18 10:49:09 GET /word/exemple 47.079µs
