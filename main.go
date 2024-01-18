@@ -1,102 +1,74 @@
 package main
 
 import (
-	"bufio"
+	"encoding/json"
 	"fmt"
-	"os"
-	"strings"
+	"net/http"
 	"estiam-main/dictionary"
+	"estiam-main/middleware"
+	"github.com/gorilla/mux"
 )
 
+type Word struct {
+	Word       string `json:"word"`
+	Definition string `json:"definition"`
+}
+
 func main() {
-	reader := bufio.NewReader(os.Stdin)
 	d := dictionary.New("dictionary.json")
+	router := mux.NewRouter()
 
-	for {
-		fmt.Println("\nChoose an action [add, define, remove, list, exit]:")
-		action, _ := reader.ReadString('\n')
-		action = strings.TrimSpace(action)
+	router.HandleFunc("/word", addWord(d)).Methods("POST")
+	router.HandleFunc("/word/{word}", getDefinition(d)).Methods("GET")
+	router.HandleFunc("/word/{word}", deleteWord(d)).Methods("DELETE")
+	router.Use(middleware.LoggingMiddleware)
+	fmt.Println("Server is running on port 8080")
+	http.ListenAndServe(":8080", router)
+}
 
-		switch action {
-		case "add":
-			actionAddConcurrent(d, reader)
-		case "define":
-			actionDefineConcurrent(d, reader)
-		case "remove":
-			actionRemoveConcurrent(d, reader)
-		case "list":
-			actionList(d)
-		case "exit":
-			fmt.Println("Exiting...")
+
+
+func addWord(d *dictionary.Dictionary) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		var word Word
+		err := json.NewDecoder(r.Body).Decode(&word)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
 			return
-		default:
-			fmt.Println("Action not recognized.")
 		}
+
+		err = d.Add(word.Word, word.Definition)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+
+		w.WriteHeader(http.StatusCreated)
 	}
 }
 
-func actionAddConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Enter word: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	fmt.Print("Enter definition: ")
-	definition, _ := reader.ReadString('\n')
-	definition = strings.TrimSpace(definition)
-
-	go func() {
-		err := d.Add(word, definition)
+func getDefinition(d *dictionary.Dictionary) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		word, err := d.Get(vars["word"])
 		if err != nil {
-			fmt.Println("Failed to add word:", err)
-		} else {
-			fmt.Println("Word added.")
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
 		}
-	}()
-}
 
-func actionDefineConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Enter word: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	go func() {
-		entry, err := d.Get(word)
-		if err != nil {
-			fmt.Println("Failed to find word:", err)
-		} else {
-			fmt.Println("Definition:", entry)
-		}
-	}()
-}
-
-func actionRemoveConcurrent(d *dictionary.Dictionary, reader *bufio.Reader) {
-	fmt.Print("Enter word to remove: ")
-	word, _ := reader.ReadString('\n')
-	word = strings.TrimSpace(word)
-
-	go func() {
-		err := d.Remove(word)
-		if err != nil {
-			fmt.Println("Failed to remove word:", err)
-		} else {
-			fmt.Println("Word removed.")
-		}
-	}()
-}
-
-func actionList(d *dictionary.Dictionary) {
-	words, err := d.List()
-	if err != nil {
-		fmt.Println("Error listing words:", err)
-		return
+		json.NewEncoder(w).Encode(word)
 	}
+}
 
-	for _, word := range words {
-		entry, err := d.Get(word)
+func deleteWord(d *dictionary.Dictionary) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		vars := mux.Vars(r)
+		err := d.Remove(vars["word"])
 		if err != nil {
-			fmt.Println("Error getting definition for word:", word, "Error:", err)
-			continue
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
 		}
-		fmt.Println(word, ":", entry)
+
+		w.WriteHeader(http.StatusOK)
 	}
 }
